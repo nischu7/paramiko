@@ -39,21 +39,21 @@ class NullServer (ServerInterface):
     
     def get_allowed_auths(self, username):
         if username == 'slowdive':
-            return 'publickey,password'
+            return b'publickey,password'
         if username == 'paranoid':
             if not self.paranoid_did_password and not self.paranoid_did_public_key:
-                return 'publickey,password'
+                return b'publickey,password'
             elif self.paranoid_did_password:
-                return 'publickey'
+                return b'publickey'
             else:
-                return 'password'
+                return b'password'
         if username == 'commie':
-            return 'keyboard-interactive'
+            return b'keyboard-interactive'
         if username == 'utf8':
-            return 'password'
+            return b'password'
         if username == 'non-utf8':
-            return 'password'
-        return 'publickey'
+            return b'password'
+        return b'publickey'
 
     def check_auth_password(self, username, password):
         if (username == 'slowdive') and (password == 'pygmalion'):
@@ -64,9 +64,9 @@ class NullServer (ServerInterface):
             if self.paranoid_did_public_key:
                 return AUTH_SUCCESSFUL
             return AUTH_PARTIALLY_SUCCESSFUL
-        if (username == 'utf8') and (password == u'\u2022'):
+        if (username == 'utf8') and (password == '\u2022'):
             return AUTH_SUCCESSFUL
-        if (username == 'non-utf8') and (password == '\xff'):
+        if (username == 'non-utf8') and (password == b'\xff'):
             return AUTH_SUCCESSFUL
         if username == 'bad-server':
             raise Exception("Ack!")
@@ -84,12 +84,12 @@ class NullServer (ServerInterface):
     def check_auth_interactive(self, username, submethods):
         if username == 'commie':
             self.username = username
-            return InteractiveQuery('password', 'Please enter a password.', ('Password', False))
+            return InteractiveQuery(b'password', b'Please enter a password.', (b'Password', False))
         return AUTH_FAILED
     
     def check_auth_interactive_response(self, responses):
         if self.username == 'commie':
-            if (len(responses) == 1) and (responses[0] == 'cat'):
+            if (len(responses) == 1) and (responses[0] == b'cat'):
                 return AUTH_SUCCESSFUL
         return AUTH_FAILED
 
@@ -111,7 +111,7 @@ class AuthTest (unittest.TestCase):
     
     def start_server(self):
         host_key = RSAKey.from_private_key_file('tests/test_rsa.key')
-        self.public_host_key = RSAKey(data=str(host_key))
+        self.public_host_key = RSAKey(data=bytes(host_key))
         self.ts.add_server_key(host_key)
         self.event = threading.Event()
         self.server = NullServer()
@@ -131,12 +131,12 @@ class AuthTest (unittest.TestCase):
         self.start_server()
         try:
             self.tc.connect(hostkey=self.public_host_key,
-                            username='unknown', password='error')
+                            username=b'unknown', password=b'error')
             self.assert_(False)
         except:
             etype, evalue, etb = sys.exc_info()
             self.assertEquals(BadAuthenticationType, etype)
-            self.assertEquals(['publickey'], evalue.allowed_types)
+            self.assertEquals([b'publickey'], evalue.allowed_types)
 
     def test_2_bad_password(self):
         """
@@ -146,12 +146,12 @@ class AuthTest (unittest.TestCase):
         self.start_server()
         self.tc.connect(hostkey=self.public_host_key)
         try:
-            self.tc.auth_password(username='slowdive', password='error')
+            self.tc.auth_password(username=b'slowdive', password=b'error')
             self.assert_(False)
         except:
             etype, evalue, etb = sys.exc_info()
             self.assert_(issubclass(etype, AuthenticationException))
-        self.tc.auth_password(username='slowdive', password='pygmalion')
+        self.tc.auth_password(username=b'slowdive', password=b'pygmalion')
         self.verify_finished()
     
     def test_3_multipart_auth(self):
@@ -161,7 +161,7 @@ class AuthTest (unittest.TestCase):
         self.start_server()
         self.tc.connect(hostkey=self.public_host_key)
         remain = self.tc.auth_password(username='paranoid', password='paranoid')
-        self.assertEquals(['publickey'], remain)
+        self.assertEquals([b'publickey'], remain)
         key = DSSKey.from_private_key_file('tests/test_dss.key')
         remain = self.tc.auth_publickey(username='paranoid', key=key)
         self.assertEquals([], remain)
@@ -178,10 +178,10 @@ class AuthTest (unittest.TestCase):
             self.got_title = title
             self.got_instructions = instructions
             self.got_prompts = prompts
-            return ['cat']
-        remain = self.tc.auth_interactive('commie', handler)
-        self.assertEquals(self.got_title, 'password')
-        self.assertEquals(self.got_prompts, [('Password', False)])
+            return [b'cat']
+        remain = self.tc.auth_interactive(b'commie', handler)
+        self.assertEquals(self.got_title, b'password')
+        self.assertEquals(self.got_prompts, [(b'Password', False)])
         self.assertEquals([], remain)
         self.verify_finished()
         
@@ -202,7 +202,7 @@ class AuthTest (unittest.TestCase):
         """
         self.start_server()
         self.tc.connect(hostkey=self.public_host_key)
-        remain = self.tc.auth_password('utf8', u'\u2022')
+        remain = self.tc.auth_password('utf8', '\u2022'.encode())
         self.assertEquals([], remain)
         self.verify_finished()
 
@@ -213,7 +213,7 @@ class AuthTest (unittest.TestCase):
         """
         self.start_server()
         self.tc.connect(hostkey=self.public_host_key)
-        remain = self.tc.auth_password('non-utf8', '\xff')
+        remain = self.tc.auth_password('non-utf8', b'\xff')
         self.assertEquals([], remain)
         self.verify_finished()
 

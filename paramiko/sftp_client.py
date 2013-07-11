@@ -85,7 +85,7 @@ class SFTPClient (BaseSFTP):
             self.ultra_debug = transport.get_hexdump()
         try:
             server_version = self._send_version()
-        except EOFError, x:
+        except EOFError as x:
             raise SSHException('EOF during negotiation')
         self._log(INFO, 'Opened sftp connection (server version %d)' % server_version)
 
@@ -102,7 +102,7 @@ class SFTPClient (BaseSFTP):
         chan = t.open_session()
         if chan is None:
             return None
-        chan.invoke_subsystem('sftp')
+        chan.invoke_subsystem(b'sftp')
         return cls(chan)
     from_transport = classmethod(from_transport)
 
@@ -178,15 +178,15 @@ class SFTPClient (BaseSFTP):
         while True:
             try:
                 t, msg = self._request(CMD_READDIR, handle)
-            except EOFError, e:
+            except EOFError as e:
                 # done with handle
                 break
             if t != CMD_NAME:
                 raise SFTPError('Expected name response')
             count = msg.get_int()
             for i in range(count):
-                filename = _to_unicode(msg.get_string())
-                longname = _to_unicode(msg.get_string())
+                filename = msg.get_string().decode()
+                longname = msg.get_string().decode()
                 attr = SFTPAttributes._from_msg(msg, filename, longname)
                 if (filename != '.') and (filename != '..'):
                     filelist.append(attr)
@@ -285,7 +285,7 @@ class SFTPClient (BaseSFTP):
         self._log(DEBUG, 'rename(%r, %r)' % (oldpath, newpath))
         self._request(CMD_RENAME, oldpath, newpath)
 
-    def mkdir(self, path, mode=0777):
+    def mkdir(self, path, mode=0o777):
         """
         Create a folder (directory) named C{path} with numeric mode C{mode}.
         The default mode is 0777 (octal).  On some systems, mode is ignored.
@@ -369,7 +369,7 @@ class SFTPClient (BaseSFTP):
         """
         dest = self._adjust_cwd(dest)
         self._log(DEBUG, 'symlink(%r, %r)' % (source, dest))
-        if type(source) is unicode:
+        if type(source) is str:
             source = source.encode('utf-8')
         self._request(CMD_SYMLINK, source, dest)
 
@@ -471,7 +471,8 @@ class SFTPClient (BaseSFTP):
             return None
         if count != 1:
             raise SFTPError('Readlink returned %d results' % count)
-        return _to_unicode(msg.get_string())
+
+        return msg.get_string().decode()
 
     def normalize(self, path):
         """
@@ -495,7 +496,7 @@ class SFTPClient (BaseSFTP):
         count = msg.get_int()
         if count != 1:
             raise SFTPError('Realpath returned %d results' % count)
-        return _to_unicode(msg.get_string())
+        return msg.get_string().decode()
 
     def chdir(self, path):
         """
@@ -518,7 +519,7 @@ class SFTPClient (BaseSFTP):
             return
         if not stat.S_ISDIR(self.stat(path).st_mode):
             raise SFTPError(errno.ENOTDIR, "%s: %s" % (os.strerror(errno.ENOTDIR), path))
-        self._cwd = self.normalize(path).encode('utf-8')
+        self._cwd = self.normalize(path)
 
     def getcwd(self):
         """
@@ -610,7 +611,7 @@ class SFTPClient (BaseSFTP):
         @since: 1.4
         """
         file_size = os.stat(localpath).st_size
-        fl = file(localpath, 'rb')
+        fl = open(localpath, 'rb')
         try:
             return self.putfo(fl, remotepath, os.stat(localpath).st_size, callback, confirm)
         finally:
@@ -671,7 +672,7 @@ class SFTPClient (BaseSFTP):
         @since: 1.4
         """
         file_size = self.stat(remotepath).st_size
-        fl = file(localpath, 'wb')
+        fl = open(localpath, 'wb')
         try:
             size = self.getfo(remotepath, fl, callback)
         finally:
@@ -695,19 +696,23 @@ class SFTPClient (BaseSFTP):
             msg = Message()
             msg.add_int(self.request_number)
             for item in arg:
-                if isinstance(item, int):
-                    msg.add_int(item)
-                elif isinstance(item, long):
+                if isinstance(item, FakeLong):
                     msg.add_int64(item)
+                elif isinstance(item, int):
+                    msg.add_int(item)
                 elif isinstance(item, str):
+                    msg.add_string(item.encode())
+                elif isinstance(item, bytes):
                     msg.add_string(item)
+                #elif isinstance(item, str):
+                #    msg.add_string(item.encode())
                 elif isinstance(item, SFTPAttributes):
                     item._pack(msg)
                 else:
                     raise Exception('unknown type for %r type %r' % (item, type(item)))
             num = self.request_number
             self._expecting[num] = fileobj
-            self._send_packet(t, str(msg))
+            self._send_packet(t, bytes(msg))
             self.request_number += 1
         finally:
             self._lock.release()
@@ -717,7 +722,7 @@ class SFTPClient (BaseSFTP):
         while True:
             try:
                 t, data = self._read_packet()
-            except EOFError, e:
+            except EOFError as e:
                 raise SSHException('Server connection dropped: %s' % (str(e),))
             msg = Message(data)
             num = msg.get_int()
@@ -770,8 +775,6 @@ class SFTPClient (BaseSFTP):
         Return an adjusted path if we're emulating a "current working
         directory" for the server.
         """
-        if type(path) is unicode:
-            path = path.encode('utf-8')
         if self._cwd is None:
             return path
         if (len(path) > 0) and (path[0] == '/'):

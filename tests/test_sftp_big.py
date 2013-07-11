@@ -45,7 +45,7 @@ class BigSFTPTest (unittest.TestCase):
     def setUp(self):
         global FOLDER
         sftp = get_sftp()
-        for i in xrange(1000):
+        for i in range(1000):
             FOLDER = FOLDER[:-3] + '%03d' % i
             try:
                 sftp.mkdir(FOLDER)
@@ -66,17 +66,17 @@ class BigSFTPTest (unittest.TestCase):
         try:
             for i in range(numfiles):
                 f = sftp.open('%s/file%d.txt' % (FOLDER, i), 'w', 1)
-                f.write('this is file #%d.\n' % i)
+                f.write(('this is file #%d.\n' % i).encode())
                 f.close()
-                sftp.chmod('%s/file%d.txt' % (FOLDER, i), 0660)
+                sftp.chmod('%s/file%d.txt' % (FOLDER, i), 0o660)
 
             # now make sure every file is there, by creating a list of filenmes
             # and reading them in random order.
-            numlist = range(numfiles)
+            numlist = list(range(numfiles))
             while len(numlist) > 0:
                 r = numlist[random.randint(0, len(numlist) - 1)]
                 f = sftp.open('%s/file%d.txt' % (FOLDER, r))
-                self.assertEqual(f.readline(), 'this is file #%d.\n' % r)
+                self.assertEqual(f.readline(), ('this is file #%d.\n' % r).encode())
                 f.close()
                 numlist.remove(r)
         finally:
@@ -91,7 +91,7 @@ class BigSFTPTest (unittest.TestCase):
         write a 1MB file with no buffering.
         """
         sftp = get_sftp()
-        kblob = (1024 * 'x')
+        kblob = (1024 * b'x')
         start = time.time()
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
@@ -123,7 +123,7 @@ class BigSFTPTest (unittest.TestCase):
         write a 1MB file, with no linefeeds, using pipelining.
         """
         sftp = get_sftp()
-        kblob = ''.join([struct.pack('>H', n) for n in xrange(512)])
+        kblob = b''.join([struct.pack('>H', n) for n in range(512)])
         start = time.time()
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
@@ -164,7 +164,7 @@ class BigSFTPTest (unittest.TestCase):
 
     def test_4_prefetch_seek(self):
         sftp = get_sftp()
-        kblob = ''.join([struct.pack('>H', n) for n in xrange(512)])
+        kblob = b''.join([struct.pack('>H', n) for n in range(512)])
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
             f.set_pipelined(True)
@@ -180,13 +180,13 @@ class BigSFTPTest (unittest.TestCase):
             start = time.time()
             k2blob = kblob + kblob
             chunk = 793
-            for i in xrange(10):
+            for i in range(10):
                 f = sftp.open('%s/hongry.txt' % FOLDER, 'r')
                 f.prefetch()
                 base_offset = (512 * 1024) + 17 * random.randint(1000, 2000)
-                offsets = [base_offset + j * chunk for j in xrange(100)]
+                offsets = [base_offset + j * chunk for j in range(100)]
                 # randomly seek around and read them out
-                for j in xrange(100):
+                for j in range(100):
                     offset = offsets[random.randint(0, len(offsets) - 1)]
                     offsets.remove(offset)
                     f.seek(offset)
@@ -202,7 +202,7 @@ class BigSFTPTest (unittest.TestCase):
 
     def test_5_readv_seek(self):
         sftp = get_sftp()
-        kblob = ''.join([struct.pack('>H', n) for n in xrange(512)])
+        kblob = b''.join([struct.pack('>H', n) for n in range(512)])
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
             f.set_pipelined(True)
@@ -218,21 +218,21 @@ class BigSFTPTest (unittest.TestCase):
             start = time.time()
             k2blob = kblob + kblob
             chunk = 793
-            for i in xrange(10):
+            for i in range(10):
                 f = sftp.open('%s/hongry.txt' % FOLDER, 'r')
                 base_offset = (512 * 1024) + 17 * random.randint(1000, 2000)
                 # make a bunch of offsets and put them in random order
-                offsets = [base_offset + j * chunk for j in xrange(100)]
+                offsets = [base_offset + j * chunk for j in range(100)]
                 readv_list = []
-                for j in xrange(100):
+                for j in range(100):
                     o = offsets[random.randint(0, len(offsets) - 1)]
                     offsets.remove(o)
                     readv_list.append((o, chunk))
                 ret = f.readv(readv_list)
-                for i in xrange(len(readv_list)):
+                for i in range(len(readv_list)):
                     offset = readv_list[i][0]
                     n_offset = offset % 1024
-                    self.assertEqual(ret.next(), k2blob[n_offset:n_offset + chunk])
+                    self.assertEqual(next(ret), k2blob[n_offset:n_offset + chunk])
                 f.close()
             end = time.time()
             sys.stderr.write('%ds ' % round(end - start))
@@ -245,7 +245,7 @@ class BigSFTPTest (unittest.TestCase):
         without using it, to verify that paramiko doesn't get confused.
         """
         sftp = get_sftp()
-        kblob = (1024 * 'x')
+        kblob = (1024 * b'x')
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
             f.set_pipelined(True)
@@ -278,7 +278,7 @@ class BigSFTPTest (unittest.TestCase):
         verify that prefetch and readv don't conflict with each other.
         """
         sftp = get_sftp()
-        kblob = ''.join([struct.pack('>H', n) for n in xrange(512)])
+        kblob = b''.join([struct.pack('>H', n) for n in range(512)])
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
             f.set_pipelined(True)
@@ -317,7 +317,7 @@ class BigSFTPTest (unittest.TestCase):
         returned as a single blob.
         """
         sftp = get_sftp()
-        kblob = ''.join([struct.pack('>H', n) for n in xrange(512)])
+        kblob = b''.join([struct.pack('>H', n) for n in range(512)])
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w')
             f.set_pipelined(True)
@@ -346,7 +346,7 @@ class BigSFTPTest (unittest.TestCase):
         write a 1MB file, with no linefeeds, and a big buffer.
         """
         sftp = get_sftp()
-        mblob = (1024 * 1024 * 'x')
+        mblob = (1024 * 1024 * b'x')
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w', 128 * 1024)
             f.write(mblob)
@@ -363,10 +363,10 @@ class BigSFTPTest (unittest.TestCase):
         sftp = get_sftp()
         t = sftp.sock.get_transport()
         t.packetizer.REKEY_BYTES = 512 * 1024
-        k32blob = (32 * 1024 * 'x')
+        k32blob = (32 * 1024 * b'x')
         try:
             f = sftp.open('%s/hongry.txt' % FOLDER, 'w', 128 * 1024)
-            for i in xrange(32):
+            for i in range(32):
                 f.write(k32blob)
             f.close()
             

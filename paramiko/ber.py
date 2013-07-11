@@ -17,8 +17,10 @@
 # 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
 
 
-import util
+from . import util
+from .util import pack_byte
 
+import struct
 
 class BERException (Exception):
     pass
@@ -29,11 +31,11 @@ class BER(object):
     Robey's tiny little attempt at a BER decoder.
     """
 
-    def __init__(self, content=''):
+    def __init__(self, content=b''):
         self.content = content
         self.idx = 0
 
-    def __str__(self):
+    def __bytes__(self):
         return self.content
 
     def __repr__(self):
@@ -45,13 +47,13 @@ class BER(object):
     def decode_next(self):
         if self.idx >= len(self.content):
             return None
-        ident = ord(self.content[self.idx])
+        ident = self.content[self.idx]
         self.idx += 1
         if (ident & 31) == 31:
             # identifier > 30
             ident = 0
             while self.idx < len(self.content):
-                t = ord(self.content[self.idx])
+                t = self.content[self.idx]
                 self.idx += 1
                 ident = (ident << 7) | (t & 0x7f)
                 if not (t & 0x80):
@@ -59,7 +61,7 @@ class BER(object):
         if self.idx >= len(self.content):
             return None
         # now fetch length
-        size = ord(self.content[self.idx])
+        size = self.content[self.idx]
         self.idx += 1
         if size & 0x80:
             # more complimicated...
@@ -98,21 +100,24 @@ class BER(object):
 
     def encode_tlv(self, ident, val):
         # no need to support ident > 31 here
-        self.content += chr(ident)
+        #self.content += chr(ident).encode()
+        self.content += struct.pack('>B', ident)
         if len(val) > 0x7f:
             lenstr = util.deflate_long(len(val))
-            self.content += chr(0x80 + len(lenstr)) + lenstr
+            #self.content += struct.pack('>B', 0x80 + len(lenstr)) + lenstr
+            self.content += pack_byte(0x80 + len(lenstr)) + lenstr
         else:
-            self.content += chr(len(val))
+            #self.content += chr(len(val)).encode()
+            self.content += pack_byte(len(val))
         self.content += val
 
     def encode(self, x):
         if type(x) is bool:
             if x:
-                self.encode_tlv(1, '\xff')
+                self.encode_tlv(1, b'\xff')
             else:
-                self.encode_tlv(1, '\x00')
-        elif (type(x) is int) or (type(x) is long):
+                self.encode_tlv(1, b'\x00')
+        elif type(x) is int:
             self.encode_tlv(2, util.deflate_long(x))
         elif type(x) is str:
             self.encode_tlv(4, x)
@@ -125,5 +130,5 @@ class BER(object):
         b = BER()
         for item in data:
             b.encode(item)
-        return str(b)
+        return bytes(b)
     encode_sequence = staticmethod(encode_sequence)

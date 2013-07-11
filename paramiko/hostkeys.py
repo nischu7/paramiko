@@ -23,7 +23,14 @@ L{HostKeys}
 import base64
 import binascii
 from Crypto.Hash import SHA, HMAC
-import UserDict
+
+try:
+    import UserDict
+    import DictMixin
+except:
+    from collections import UserDict
+    #from collections import MutableMapping as DictMixin
+    from collections import Mapping as DictMixin
 
 from paramiko.common import *
 from paramiko.dsskey import DSSKey
@@ -78,13 +85,13 @@ class HostKeyEntry:
         # to hold it accordingly.
         try:
             if keytype == 'ssh-rsa':
-                key = RSAKey(data=base64.decodestring(key))
+                key = RSAKey(data=base64.decodebytes(key.encode()))
             elif keytype == 'ssh-dss':
-                key = DSSKey(data=base64.decodestring(key))
+                key = DSSKey(data=base64.decodebytes(key.encode()))
             else:
                 log.info("Unable to handle key of type %s" % (keytype,))
                 return None
-        except binascii.Error, e:
+        except binascii.Error as e:
             raise InvalidHostKey(line, e)
 
         return cls(names, key)
@@ -105,7 +112,7 @@ class HostKeyEntry:
         return '<HostKeyEntry %r: %r>' % (self.hostnames, self.key)
 
 
-class HostKeys (UserDict.DictMixin):
+class HostKeys (DictMixin):
     """
     Representation of an openssh-style "known hosts" file.  Host keys can be
     read from one or more files, and then individual hosts can be looked up to
@@ -211,11 +218,17 @@ class HostKeys (UserDict.DictMixin):
         @return: keys associated with this host (or C{None})
         @rtype: dict(str, L{PKey})
         """
-        class SubDict (UserDict.DictMixin):
+        class SubDict (DictMixin):
             def __init__(self, hostname, entries, hostkeys):
                 self._hostname = hostname
                 self._entries = entries
                 self._hostkeys = hostkeys
+
+            def __len__(self):
+                return len(self.keys())
+
+            def __iter__(self):
+                return self.keys().__iter__()
 
             def __getitem__(self, key):
                 for e in self._entries:
@@ -276,6 +289,12 @@ class HostKeys (UserDict.DictMixin):
         """
         self._entries = []
 
+    def __len__(self):
+        return len(self.keys())
+
+    def __iter__(self):
+        return self.keys().__iter__()
+
     def __getitem__(self, key):
         ret = self.lookup(key)
         if ret is None:
@@ -329,10 +348,10 @@ class HostKeys (UserDict.DictMixin):
         else:
             if salt.startswith('|1|'):
                 salt = salt.split('|')[2]
-            salt = base64.decodestring(salt)
+            salt = base64.decodebytes(salt.encode())
         assert len(salt) == SHA.digest_size
-        hmac = HMAC.HMAC(salt, hostname, SHA).digest()
-        hostkey = '|1|%s|%s' % (base64.encodestring(salt), base64.encodestring(hmac))
+        hmac = HMAC.HMAC(salt, hostname.encode(), SHA).digest()
+        hostkey = '|1|%s|%s' % (base64.encodestring(salt).decode(), base64.encodestring(hmac).decode())
         return hostkey.replace('\n', '')
     hash_host = staticmethod(hash_host)
 

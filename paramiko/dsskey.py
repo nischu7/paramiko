@@ -25,6 +25,7 @@ from Crypto.Hash import SHA
 
 from paramiko.common import *
 from paramiko import util
+from paramiko.util import pack_byte
 from paramiko.ssh_exception import SSHException
 from paramiko.message import Message
 from paramiko.ber import BER, BERException
@@ -56,22 +57,23 @@ class DSSKey (PKey):
         else:
             if msg is None:
                 raise SSHException('Key object may not be empty')
-            if msg.get_string() != 'ssh-dss':
+            if msg.get_string() != b'ssh-dss':
                 raise SSHException('Invalid key')
             self.p = msg.get_mpint()
             self.q = msg.get_mpint()
             self.g = msg.get_mpint()
             self.y = msg.get_mpint()
-        self.size = util.bit_length(self.p)
+        #self.size = util.bit_length(self.p)
+        self.size = self.p.bit_length()
 
-    def __str__(self):
+    def __bytes__(self):
         m = Message()
-        m.add_string('ssh-dss')
+        m.add_string(b'ssh-dss')
         m.add_mpint(self.p)
         m.add_mpint(self.q)
         m.add_mpint(self.g)
         m.add_mpint(self.y)
-        return str(m)
+        return bytes(m)
 
     def __hash__(self):
         h = hash(self.get_name())
@@ -83,7 +85,7 @@ class DSSKey (PKey):
         return hash(h)
 
     def get_name(self):
-        return 'ssh-dss'
+        return b'ssh-dss'
 
     def get_bits(self):
         return self.size
@@ -93,7 +95,7 @@ class DSSKey (PKey):
 
     def sign_ssh_data(self, rng, data):
         digest = SHA.new(data).digest()
-        dss = DSA.construct((long(self.y), long(self.g), long(self.p), long(self.q), long(self.x)))
+        dss = DSA.construct((self.y, self.g, self.p, self.q, self.x))
         # generate a suitable k
         qsize = len(util.deflate_long(self.q, 0))
         while True:
@@ -102,24 +104,24 @@ class DSSKey (PKey):
                 break
         r, s = dss.sign(util.inflate_long(digest, 1), k)
         m = Message()
-        m.add_string('ssh-dss')
+        m.add_string(b'ssh-dss')
         # apparently, in rare cases, r or s may be shorter than 20 bytes!
         rstr = util.deflate_long(r, 0)
         sstr = util.deflate_long(s, 0)
         if len(rstr) < 20:
-            rstr = '\x00' * (20 - len(rstr)) + rstr
+            rstr = b'\x00' * (20 - len(rstr)) + rstr
         if len(sstr) < 20:
-            sstr = '\x00' * (20 - len(sstr)) + sstr
+            sstr = b'\x00' * (20 - len(sstr)) + sstr
         m.add_string(rstr + sstr)
         return m
 
     def verify_ssh_sig(self, data, msg):
-        if len(str(msg)) == 40:
+        if len(bytes(msg)) == 40:
             # spies.com bug: signature has no header
-            sig = str(msg)
+            sig = bytes(msg)
         else:
             kind = msg.get_string()
-            if kind != 'ssh-dss':
+            if kind != b'ssh-dss':
                 return 0
             sig = msg.get_string()
 
@@ -128,7 +130,7 @@ class DSSKey (PKey):
         sigS = util.inflate_long(sig[20:], 1)
         sigM = util.inflate_long(SHA.new(data).digest(), 1)
 
-        dss = DSA.construct((long(self.y), long(self.g), long(self.p), long(self.q)))
+        dss = DSA.construct((self.y, self.g, self.p, self.q))
         return dss.verify(sigM, (sigR, sigS))
 
     def _encode_key(self):
@@ -140,7 +142,7 @@ class DSSKey (PKey):
             b.encode(keylist)
         except BERException:
             raise SSHException('Unable to create ber encoding of key')
-        return str(b)
+        return bytes(b)
 
     def write_private_key_file(self, filename, password=None):
         self._write_private_key_file('DSA', filename, self._encode_key(), password)
@@ -184,7 +186,7 @@ class DSSKey (PKey):
         # DSAPrivateKey = { version = 0, p, q, g, y, x }
         try:
             keylist = BER(data).decode()
-        except BERException, x:
+        except BERException as x:
             raise SSHException('Unable to parse key file: ' + str(x))
         if (type(keylist) is not list) or (len(keylist) < 6) or (keylist[0] != 0):
             raise SSHException('not a valid DSA private key file (bad ber encoding)')
@@ -193,4 +195,5 @@ class DSSKey (PKey):
         self.g = keylist[3]
         self.y = keylist[4]
         self.x = keylist[5]
-        self.size = util.bit_length(self.p)
+        #self.size = util.bit_length(self.p)
+        self.size = self.p.bit_length()

@@ -44,7 +44,7 @@ class SFTPAttributes (object):
     FLAG_UIDGID = 2
     FLAG_PERMISSIONS = 4
     FLAG_AMTIME = 8
-    FLAG_EXTENDED = 0x80000000L
+    FLAG_EXTENDED = 0x80000000
 
     def __init__(self):
         """
@@ -139,8 +139,8 @@ class SFTPAttributes (object):
             msg.add_int(self.st_mode)
         if self._flags & self.FLAG_AMTIME:
             # throw away any fractional seconds
-            msg.add_int(long(self.st_atime))
-            msg.add_int(long(self.st_mtime))
+            msg.add_int(int(self.st_atime))
+            msg.add_int(int(self.st_mtime))
         if self._flags & self.FLAG_EXTENDED:
             msg.add_int(len(self.attr))
             for key, val in self.attr.iteritems():
@@ -194,13 +194,13 @@ class SFTPAttributes (object):
                 ks = 's'
             else:
                 ks = '?'
-            ks += self._rwx((self.st_mode & 0700) >> 6, self.st_mode & stat.S_ISUID)
-            ks += self._rwx((self.st_mode & 070) >> 3, self.st_mode & stat.S_ISGID)
+            ks += self._rwx((self.st_mode & 0o700) >> 6, self.st_mode & stat.S_ISUID)
+            ks += self._rwx((self.st_mode & 0o70) >> 3, self.st_mode & stat.S_ISGID)
             ks += self._rwx(self.st_mode & 7, self.st_mode & stat.S_ISVTX, True)
         else:
             ks = '?---------'
         # compute display date
-        if (self.st_mtime is None) or (self.st_mtime == 0xffffffffL):
+        if (self.st_mtime is None) or (self.st_mtime == 0xffffffff):
             # shouldn't really happen
             datestr = '(unknown date)'
         else:

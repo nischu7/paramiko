@@ -34,8 +34,8 @@ class NullServer (paramiko.ServerInterface):
 
     def get_allowed_auths(self, username):
         if username == 'slowdive':
-            return 'publickey,password'
-        return 'publickey'
+            return b'publickey,password'
+        return b'publickey'
 
     def check_auth_password(self, username, password):
         if (username == 'slowdive') and (password == 'pygmalion'):
@@ -43,7 +43,7 @@ class NullServer (paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        if (key.get_name() == 'ssh-dss') and (hexlify(key.get_fingerprint()) == '4478f0b9a23cc5182009ff755bc1d26c'):
+        if (key.get_name() == b'ssh-dss') and (hexlify(key.get_fingerprint()) == b'4478f0b9a23cc5182009ff755bc1d26c'):
             return paramiko.AUTH_SUCCESSFUL
         return paramiko.AUTH_FAILED
 
@@ -51,7 +51,7 @@ class NullServer (paramiko.ServerInterface):
         return paramiko.OPEN_SUCCEEDED
 
     def check_channel_exec_request(self, channel, command):
-        if command != 'yes':
+        if command != b'yes':
             return False
         return True
 
@@ -86,10 +86,10 @@ class SSHClientTest (unittest.TestCase):
         verify that the SSHClient stuff works too.
         """
         host_key = paramiko.RSAKey.from_private_key_file('tests/test_rsa.key')
-        public_host_key = paramiko.RSAKey(data=str(host_key))
+        public_host_key = paramiko.RSAKey(data=bytes(host_key))
 
         self.tc = paramiko.SSHClient()
-        self.tc.get_host_keys().add('[%s]:%d' % (self.addr, self.port), 'ssh-rsa', public_host_key)
+        self.tc.get_host_keys().add('[%s]:%d' % (self.addr, self.port), b'ssh-rsa', public_host_key)
         self.tc.connect(self.addr, self.port, username='slowdive', password='pygmalion')
 
         self.event.wait(1.0)
@@ -101,14 +101,14 @@ class SSHClientTest (unittest.TestCase):
         stdin, stdout, stderr = self.tc.exec_command('yes')
         schan = self.ts.accept(1.0)
 
-        schan.send('Hello there.\n')
-        schan.send_stderr('This is on stderr.\n')
+        schan.send(b'Hello there.\n')
+        schan.send_stderr(b'This is on stderr.\n')
         schan.close()
 
-        self.assertEquals('Hello there.\n', stdout.readline())
-        self.assertEquals('', stdout.readline())
-        self.assertEquals('This is on stderr.\n', stderr.readline())
-        self.assertEquals('', stderr.readline())
+        self.assertEquals(b'Hello there.\n', stdout.readline())
+        self.assertEquals(b'', stdout.readline())
+        self.assertEquals(b'This is on stderr.\n', stderr.readline())
+        self.assertEquals(b'', stderr.readline())
 
         stdin.close()
         stdout.close()
@@ -119,10 +119,10 @@ class SSHClientTest (unittest.TestCase):
         verify that SSHClient works with a DSA key.
         """
         host_key = paramiko.RSAKey.from_private_key_file('tests/test_rsa.key')
-        public_host_key = paramiko.RSAKey(data=str(host_key))
+        public_host_key = paramiko.RSAKey(data=bytes(host_key))
 
         self.tc = paramiko.SSHClient()
-        self.tc.get_host_keys().add('[%s]:%d' % (self.addr, self.port), 'ssh-rsa', public_host_key)
+        self.tc.get_host_keys().add('[%s]:%d' % (self.addr, self.port), b'ssh-rsa', public_host_key)
         self.tc.connect(self.addr, self.port, username='slowdive', key_filename='tests/test_dss.key')
 
         self.event.wait(1.0)
@@ -134,14 +134,14 @@ class SSHClientTest (unittest.TestCase):
         stdin, stdout, stderr = self.tc.exec_command('yes')
         schan = self.ts.accept(1.0)
 
-        schan.send('Hello there.\n')
-        schan.send_stderr('This is on stderr.\n')
+        schan.send(b'Hello there.\n')
+        schan.send_stderr(b'This is on stderr.\n')
         schan.close()
 
-        self.assertEquals('Hello there.\n', stdout.readline())
-        self.assertEquals('', stdout.readline())
-        self.assertEquals('This is on stderr.\n', stderr.readline())
-        self.assertEquals('', stderr.readline())
+        self.assertEquals(b'Hello there.\n', stdout.readline())
+        self.assertEquals(b'', stdout.readline())
+        self.assertEquals(b'This is on stderr.\n', stderr.readline())
+        self.assertEquals(b'', stderr.readline())
 
         stdin.close()
         stdout.close()
@@ -152,11 +152,11 @@ class SSHClientTest (unittest.TestCase):
         verify that SSHClient accepts and tries multiple key files.
         """
         host_key = paramiko.RSAKey.from_private_key_file('tests/test_rsa.key')
-        public_host_key = paramiko.RSAKey(data=str(host_key))
+        public_host_key = paramiko.RSAKey(data=bytes(host_key))
 
         self.tc = paramiko.SSHClient()
         self.tc.get_host_keys().add('[%s]:%d' % (self.addr, self.port), 'ssh-rsa', public_host_key)
-        self.tc.connect(self.addr, self.port, username='slowdive', key_filename=[ 'tests/test_rsa.key', 'tests/test_dss.key' ])
+        self.tc.connect(self.addr, self.port, username='slowdive', key_filename=[ b'tests/test_rsa.key', b'tests/test_dss.key' ])
 
         self.event.wait(1.0)
         self.assert_(self.event.isSet())
@@ -169,7 +169,7 @@ class SSHClientTest (unittest.TestCase):
         verify that SSHClient's AutoAddPolicy works.
         """
         host_key = paramiko.RSAKey.from_private_key_file('tests/test_rsa.key')
-        public_host_key = paramiko.RSAKey(data=str(host_key))
+        public_host_key = paramiko.RSAKey(data=bytes(host_key))
 
         self.tc = paramiko.SSHClient()
         self.tc.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -182,7 +182,7 @@ class SSHClientTest (unittest.TestCase):
         self.assertEquals('slowdive', self.ts.get_username())
         self.assertEquals(True, self.ts.is_authenticated())
         self.assertEquals(1, len(self.tc.get_host_keys()))
-        self.assertEquals(public_host_key, self.tc.get_host_keys()['[%s]:%d' % (self.addr, self.port)]['ssh-rsa'])
+        self.assertEquals(public_host_key, self.tc.get_host_keys()['[%s]:%d' % (self.addr, self.port)][b'ssh-rsa'])
 
     def test_5_cleanup(self):
         """
@@ -190,7 +190,7 @@ class SSHClientTest (unittest.TestCase):
         transport's packetizer) is closed.
         """
         host_key = paramiko.RSAKey.from_private_key_file('tests/test_rsa.key')
-        public_host_key = paramiko.RSAKey(data=str(host_key))
+        public_host_key = paramiko.RSAKey(data=bytes(host_key))
 
         self.tc = paramiko.SSHClient()
         self.tc.set_missing_host_key_policy(paramiko.AutoAddPolicy())

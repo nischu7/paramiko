@@ -34,41 +34,45 @@ MSG_CHANNEL_OPEN, MSG_CHANNEL_OPEN_SUCCESS, MSG_CHANNEL_OPEN_FAILURE, \
     MSG_CHANNEL_SUCCESS, MSG_CHANNEL_FAILURE = range(90, 101)
 
 
+class FakeLong(int):
+    def __new__(cls, v):
+        return super(FakeLong, cls).__new__(cls, v)
+
 # for debugging:
 MSG_NAMES = {
-    MSG_DISCONNECT: 'disconnect',
-    MSG_IGNORE: 'ignore',
-    MSG_UNIMPLEMENTED: 'unimplemented',
-    MSG_DEBUG: 'debug',
-    MSG_SERVICE_REQUEST: 'service-request',
-    MSG_SERVICE_ACCEPT: 'service-accept',
-    MSG_KEXINIT: 'kexinit',
-    MSG_NEWKEYS: 'newkeys',
-    30: 'kex30',
-    31: 'kex31',
-    32: 'kex32',
-    33: 'kex33',
-    34: 'kex34',
-    MSG_USERAUTH_REQUEST: 'userauth-request',
-    MSG_USERAUTH_FAILURE: 'userauth-failure',
-    MSG_USERAUTH_SUCCESS: 'userauth-success',
-    MSG_USERAUTH_BANNER: 'userauth--banner',
-    MSG_USERAUTH_PK_OK: 'userauth-60(pk-ok/info-request)',
-    MSG_USERAUTH_INFO_RESPONSE: 'userauth-info-response',
-    MSG_GLOBAL_REQUEST: 'global-request',
-    MSG_REQUEST_SUCCESS: 'request-success',
-    MSG_REQUEST_FAILURE: 'request-failure',
-    MSG_CHANNEL_OPEN: 'channel-open',
-    MSG_CHANNEL_OPEN_SUCCESS: 'channel-open-success',
-    MSG_CHANNEL_OPEN_FAILURE: 'channel-open-failure',
-    MSG_CHANNEL_WINDOW_ADJUST: 'channel-window-adjust',
-    MSG_CHANNEL_DATA: 'channel-data',
-    MSG_CHANNEL_EXTENDED_DATA: 'channel-extended-data',
-    MSG_CHANNEL_EOF: 'channel-eof',
-    MSG_CHANNEL_CLOSE: 'channel-close',
-    MSG_CHANNEL_REQUEST: 'channel-request',
-    MSG_CHANNEL_SUCCESS: 'channel-success',
-    MSG_CHANNEL_FAILURE: 'channel-failure'
+    MSG_DISCONNECT: b'disconnect',
+    MSG_IGNORE: b'ignore',
+    MSG_UNIMPLEMENTED: b'unimplemented',
+    MSG_DEBUG: b'debug',
+    MSG_SERVICE_REQUEST: b'service-request',
+    MSG_SERVICE_ACCEPT: b'service-accept',
+    MSG_KEXINIT: b'kexinit',
+    MSG_NEWKEYS: b'newkeys',
+    30: b'kex30',
+    31: b'kex31',
+    32: b'kex32',
+    33: b'kex33',
+    34: b'kex34',
+    MSG_USERAUTH_REQUEST: b'userauth-request',
+    MSG_USERAUTH_FAILURE: b'userauth-failure',
+    MSG_USERAUTH_SUCCESS: b'userauth-success',
+    MSG_USERAUTH_BANNER: b'userauth--banner',
+    MSG_USERAUTH_PK_OK: b'userauth-60(pk-ok/info-request)',
+    MSG_USERAUTH_INFO_RESPONSE: b'userauth-info-response',
+    MSG_GLOBAL_REQUEST: b'global-request',
+    MSG_REQUEST_SUCCESS: b'request-success',
+    MSG_REQUEST_FAILURE: b'request-failure',
+    MSG_CHANNEL_OPEN: b'channel-open',
+    MSG_CHANNEL_OPEN_SUCCESS: b'channel-open-success',
+    MSG_CHANNEL_OPEN_FAILURE: b'channel-open-failure',
+    MSG_CHANNEL_WINDOW_ADJUST: b'channel-window-adjust',
+    MSG_CHANNEL_DATA: b'channel-data',
+    MSG_CHANNEL_EXTENDED_DATA: b'channel-extended-data',
+    MSG_CHANNEL_EOF: b'channel-eof',
+    MSG_CHANNEL_CLOSE: b'channel-close',
+    MSG_CHANNEL_REQUEST: b'channel-request',
+    MSG_CHANNEL_SUCCESS: b'channel-success',
+    MSG_CHANNEL_FAILURE: b'channel-failure'
     }
 
 
@@ -100,23 +104,7 @@ from Crypto import Random
 # keep a crypto-strong PRNG nearby
 rng = Random.new()
 
-import sys
-if sys.version_info < (2, 3):
-    try:
-        import logging
-    except:
-        import logging22 as logging
-    import select
-    PY22 = True
-
-    import socket
-    if not hasattr(socket, 'timeout'):
-        class timeout(socket.error): pass
-        socket.timeout = timeout
-        del timeout
-else:
-    import logging
-    PY22 = False
+import sys, logging
 
 
 DEBUG = logging.DEBUG

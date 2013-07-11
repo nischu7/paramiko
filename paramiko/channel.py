@@ -29,6 +29,7 @@ import os
 
 from paramiko.common import *
 from paramiko import util
+from paramiko.util import pack_byte
 from paramiko.message import Message
 from paramiko.ssh_exception import SSHException
 from paramiko.file import BufferedFile
@@ -122,7 +123,7 @@ class Channel (object):
         out += '>'
         return out
 
-    def get_pty(self, term='vt100', width=80, height=24, width_pixels=0,
+    def get_pty(self, term=b'vt100', width=80, height=24, width_pixels=0,
                 height_pixels=0):
         """
         Request a pseudo-terminal from the server.  This is usually used right
@@ -148,16 +149,16 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('pty-req')
+        m.add_string(b'pty-req')
         m.add_boolean(True)
         m.add_string(term)
         m.add_int(width)
         m.add_int(height)
         m.add_int(width_pixels)
         m.add_int(height_pixels)
-        m.add_string('')
+        m.add_string(b'')
         self._event_pending()
         self.transport._send_user_message(m)
         self._wait_for_event()
@@ -181,9 +182,9 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('shell')
+        m.add_string(b'shell')
         m.add_boolean(1)
         self._event_pending()
         self.transport._send_user_message(m)
@@ -208,11 +209,15 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('exec')
+        m.add_string(b'exec')
         m.add_boolean(True)
+
+        if isinstance(command, str):
+            command = command.encode()
         m.add_string(command)
+
         self._event_pending()
         self.transport._send_user_message(m)
         self._wait_for_event()
@@ -235,9 +240,9 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('subsystem')
+        m.add_string(b'subsystem')
         m.add_boolean(True)
         m.add_string(subsystem)
         self._event_pending()
@@ -264,9 +269,9 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('window-change')
+        m.add_string(b'window-change')
         m.add_boolean(False)
         m.add_int(width)
         m.add_int(height)
@@ -319,9 +324,9 @@ class Channel (object):
         # in many cases, the channel will not still be open here.
         # that's fine.
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('exit-status')
+        m.add_string(b'exit-status')
         m.add_boolean(False)
         m.add_int(status)
         self.transport._send_user_message(m)
@@ -370,14 +375,14 @@ class Channel (object):
         if self.closed or self.eof_received or self.eof_sent or not self.active:
             raise SSHException('Channel is not open')
         if auth_protocol is None:
-            auth_protocol = 'MIT-MAGIC-COOKIE-1'
+            auth_protocol = b'MIT-MAGIC-COOKIE-1'
         if auth_cookie is None:
             auth_cookie = binascii.hexlify(self.transport.rng.read(16))
 
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('x11-req')
+        m.add_string(b'x11-req')
         m.add_boolean(True)
         m.add_boolean(single_connection)
         m.add_string(auth_protocol)
@@ -406,9 +411,9 @@ class Channel (object):
             raise SSHException('Channel is not open')
 
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_REQUEST))
+        m.add_byte(pack_byte(MSG_CHANNEL_REQUEST))
         m.add_int(self.remote_chanid)
-        m.add_string('auth-agent-req@openssh.com')
+        m.add_string(b'auth-agent-req@openssh.com')
         m.add_boolean(False)
         self.transport._send_user_message(m)
         self.transport._set_forward_agent_handler(handler)
@@ -477,7 +482,7 @@ class Channel (object):
         
         @since: 1.1
         """
-        data = ''
+        data = b''
         self.lock.acquire()
         try:
             old = self.combine_stderr
@@ -615,14 +620,14 @@ class Channel (object):
         """
         try:
             out = self.in_buffer.read(nbytes, self.timeout)
-        except PipeTimeout, e:
+        except PipeTimeout as e:
             raise socket.timeout()
 
         ack = self._check_add_window(len(out))
         # no need to hold the channel lock when sending this
         if ack > 0:
             m = Message()
-            m.add_byte(chr(MSG_CHANNEL_WINDOW_ADJUST))
+            m.add_byte(pack_byte(MSG_CHANNEL_WINDOW_ADJUST))
             m.add_int(self.remote_chanid)
             m.add_int(ack)
             self.transport._send_user_message(m)
@@ -665,14 +670,14 @@ class Channel (object):
         """
         try:
             out = self.in_stderr_buffer.read(nbytes, self.timeout)
-        except PipeTimeout, e:
+        except PipeTimeout as e:
             raise socket.timeout()
             
         ack = self._check_add_window(len(out))
         # no need to hold the channel lock when sending this
         if ack > 0:
             m = Message()
-            m.add_byte(chr(MSG_CHANNEL_WINDOW_ADJUST))
+            m.add_byte(pack_byte(MSG_CHANNEL_WINDOW_ADJUST))
             m.add_int(self.remote_chanid)
             m.add_int(ack)
             self.transport._send_user_message(m)
@@ -724,7 +729,7 @@ class Channel (object):
                 # eof or similar
                 return 0
             m = Message()
-            m.add_byte(chr(MSG_CHANNEL_DATA))
+            m.add_byte(pack_byte(MSG_CHANNEL_DATA))
             m.add_int(self.remote_chanid)
             m.add_string(s[:size])
         finally:
@@ -761,7 +766,7 @@ class Channel (object):
                 # eof or similar
                 return 0
             m = Message()
-            m.add_byte(chr(MSG_CHANNEL_EXTENDED_DATA))
+            m.add_byte(pack_byte(MSG_CHANNEL_EXTENDED_DATA))
             m.add_int(self.remote_chanid)
             m.add_int(1)
             m.add_string(s[:size])
@@ -969,7 +974,7 @@ class Channel (object):
                 self.transport._send_user_message(m)
 
     def _feed(self, m):
-        if type(m) is str:
+        if type(m) is bytes:
             # passed from _feed_extended
             s = m
         else:
@@ -1003,14 +1008,14 @@ class Channel (object):
         want_reply = m.get_boolean()
         server = self.transport.server_object
         ok = False
-        if key == 'exit-status':
+        if key == b'exit-status':
             self.exit_status = m.get_int()
             self.status_event.set()
             ok = True
-        elif key == 'xon-xoff':
+        elif key == b'xon-xoff':
             # ignore
             ok = True
-        elif key == 'pty-req':
+        elif key == b'pty-req':
             term = m.get_string()
             width = m.get_int()
             height = m.get_int()
@@ -1022,24 +1027,24 @@ class Channel (object):
             else:
                 ok = server.check_channel_pty_request(self, term, width, height, pixelwidth,
                                                       pixelheight, modes)
-        elif key == 'shell':
+        elif key == b'shell':
             if server is None:
                 ok = False
             else:
                 ok = server.check_channel_shell_request(self)
-        elif key == 'exec':
+        elif key == b'exec':
             cmd = m.get_string()
             if server is None:
                 ok = False
             else:
                 ok = server.check_channel_exec_request(self, cmd)
-        elif key == 'subsystem':
+        elif key == b'subsystem':
             name = m.get_string()
             if server is None:
                 ok = False
             else:
                 ok = server.check_channel_subsystem_request(self, name)
-        elif key == 'window-change':
+        elif key == b'window-change':
             width = m.get_int()
             height = m.get_int()
             pixelwidth = m.get_int()
@@ -1049,7 +1054,7 @@ class Channel (object):
             else:
                 ok = server.check_channel_window_change_request(self, width, height, pixelwidth,
                                                                 pixelheight)
-        elif key == 'x11-req':
+        elif key == b'x11-req':
             single_connection = m.get_boolean()
             auth_proto = m.get_string()
             auth_cookie = m.get_string()
@@ -1059,7 +1064,7 @@ class Channel (object):
             else:
                 ok = server.check_channel_x11_request(self, single_connection,
                                                       auth_proto, auth_cookie, screen_number)
-        elif key == 'auth-agent-req@openssh.com':
+        elif key == b'auth-agent-req@openssh.com':
             if server is None:
                 ok = False
             else:
@@ -1070,9 +1075,9 @@ class Channel (object):
         if want_reply:
             m = Message()
             if ok:
-                m.add_byte(chr(MSG_CHANNEL_SUCCESS))
+                m.add_byte(pack_byte(MSG_CHANNEL_SUCCESS))
             else:
-                m.add_byte(chr(MSG_CHANNEL_FAILURE))
+                m.add_byte(pack_byte(MSG_CHANNEL_FAILURE))
             m.add_int(self.remote_chanid)
             self.transport._send_user_message(m)
 
@@ -1138,7 +1143,7 @@ class Channel (object):
         if self.eof_sent:
             return None
         m = Message()
-        m.add_byte(chr(MSG_CHANNEL_EOF))
+        m.add_byte(pack_byte(MSG_CHANNEL_EOF))
         m.add_int(self.remote_chanid)
         self.eof_sent = True
         self._log(DEBUG, 'EOF sent (%s)', self._name)
@@ -1150,7 +1155,7 @@ class Channel (object):
             return None, None
         m1 = self._send_eof()
         m2 = Message()
-        m2.add_byte(chr(MSG_CHANNEL_CLOSE))
+        m2.add_byte(pack_byte(MSG_CHANNEL_CLOSE))
         m2.add_int(self.remote_chanid)
         self._set_closed()
         # can't unlink from the Transport yet -- the remote side may still

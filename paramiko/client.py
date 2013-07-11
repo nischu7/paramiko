@@ -335,7 +335,7 @@ class SSHClient (object):
 
         if key_filename is None:
             key_filenames = []
-        elif isinstance(key_filename, (str, unicode)):
+        elif type(key_filename) == str:
             key_filenames = [ key_filename ]
         else:
             key_filenames = key_filename
@@ -382,7 +382,7 @@ class SSHClient (object):
         stderr = chan.makefile_stderr('rb', bufsize)
         return stdin, stdout, stderr
 
-    def invoke_shell(self, term='vt100', width=80, height=24, width_pixels=0,
+    def invoke_shell(self, term=b'vt100', width=80, height=24, width_pixels=0,
                 height_pixels=0):
         """
         Start an interactive shell session on the SSH server.  A new L{Channel}
@@ -449,10 +449,10 @@ class SSHClient (object):
             try:
                 self._log(DEBUG, 'Trying SSH key %s' % hexlify(pkey.get_fingerprint()))
                 allowed_types = self._transport.auth_publickey(username, pkey)
-                two_factor = (allowed_types == ['password'])
+                two_factor = (allowed_types == [b'password'])
                 if not two_factor:
                     return
-            except SSHException, e:
+            except SSHException as e:
                 saved_exception = e
 
         if not two_factor:
@@ -462,11 +462,11 @@ class SSHClient (object):
                         key = pkey_class.from_private_key_file(key_filename, password)
                         self._log(DEBUG, 'Trying key %s from %s' % (hexlify(key.get_fingerprint()), key_filename))
                         self._transport.auth_publickey(username, key)
-                        two_factor = (allowed_types == ['password'])
+                        two_factor = (allowed_types == [b'password'])
                         if not two_factor:
                             return
                         break
-                    except SSHException, e:
+                    except SSHException as e:
                         saved_exception = e
 
         if not two_factor and allow_agent:
@@ -478,11 +478,11 @@ class SSHClient (object):
                     self._log(DEBUG, 'Trying SSH agent key %s' % hexlify(key.get_fingerprint()))
                     # for 2-factor auth a successfully auth'd key will result in ['password']
                     allowed_types = self._transport.auth_publickey(username, key)
-                    two_factor = (allowed_types == ['password'])
+                    two_factor = (allowed_types == [b'password'])
                     if not two_factor:
                         return
                     break
-                except SSHException, e:
+                except SSHException as e:
                     saved_exception = e
 
         if not two_factor:
@@ -510,20 +510,20 @@ class SSHClient (object):
                     self._log(DEBUG, 'Trying discovered key %s in %s' % (hexlify(key.get_fingerprint()), filename))
                     # for 2-factor auth a successfully auth'd key will result in ['password']
                     allowed_types = self._transport.auth_publickey(username, key)
-                    two_factor = (allowed_types == ['password'])
+                    two_factor = (allowed_types == [b'password'])
                     if not two_factor:
                         return
                     break
-                except SSHException, e:
+                except SSHException as e:
                     saved_exception = e
-                except IOError, e:
+                except IOError as e:
                     saved_exception = e
 
         if password is not None:
             try:
                 self._transport.auth_password(username, password)
                 return
-            except SSHException, e:
+            except SSHException as e:
                 saved_exception = e
         elif two_factor:
             raise SSHException('Two-factor authentication requires a password')
