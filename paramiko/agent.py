@@ -83,11 +83,11 @@ class AgentSSH(object):
         self._keys = ()
 
     def _send_message(self, msg):
-        msg = str(msg)
+        msg = bytes(msg)
         self._conn.send(struct.pack('>I', len(msg)) + msg)
         l = self._read_all(4)
         msg = Message(self._read_all(struct.unpack('>I', l)[0]))
-        return ord(msg.get_byte()), msg
+        return msg.get_byte(), msg
 
     def _read_all(self, wanted):
         result = self._conn.recv(wanted)
@@ -370,7 +370,7 @@ class AgentKey(PKey):
 
     def sign_ssh_data(self, rng, data):
         msg = Message()
-        msg.add_byte(chr(SSH2_AGENTC_SIGN_REQUEST))
+        msg.add_byte(pack_byte(SSH2_AGENTC_SIGN_REQUEST))
         msg.add_string(self.blob)
         msg.add_string(data)
         msg.add_int(0)

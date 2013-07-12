@@ -51,14 +51,14 @@ def posix_shell(chan):
                 try:
                     x = chan.recv(1024)
                     if len(x) == 0:
-                        print '\r\n*** EOF\r\n',
+                        print('\r\n*** EOF\r\n')
                         break
-                    sys.stdout.write(x)
-                    sys.stdout.flush()
+                    sys.stdout.buffer.write(x)
+                    sys.stdout.buffer.flush()
                 except socket.timeout:
                     pass
             if sys.stdin in r:
-                x = sys.stdin.read(1)
+                x = sys.stdin.buffer.read(1)
                 if len(x) == 0:
                     break
                 chan.send(x)
@@ -80,8 +80,8 @@ def windows_shell(chan):
                 sys.stdout.write('\r\n*** EOF ***\r\n\r\n')
                 sys.stdout.flush()
                 break
-            sys.stdout.write(data)
-            sys.stdout.flush()
+            sys.stdout.buffer.write(data)
+            sys.stdout.buffer.flush()
         
     writer = threading.Thread(target=writeall, args=(chan,))
     writer.start()

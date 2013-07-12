@@ -30,7 +30,7 @@ import getpass
 import os
 import socket
 import select
-import SocketServer
+import socketserver
 import sys
 from optparse import OptionParser
 
@@ -41,20 +41,22 @@ DEFAULT_PORT = 4000
 
 g_verbose = True
 
+class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
 
-class ForwardServer (SocketServer.ThreadingTCPServer):
+class ForwardServer (ThreadingTCPServer):
     daemon_threads = True
     allow_reuse_address = True
     
 
-class Handler (SocketServer.BaseRequestHandler):
+class Handler (socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
-            chan = self.ssh_transport.open_channel('direct-tcpip',
+            chan = self.ssh_transport.open_channel(b'direct-tcpip',
                                                    (self.chain_host, self.chain_port),
                                                    self.request.getpeername())
-        except Exception, e:
+        except Exception as e:
             verbose('Incoming request to %s:%d failed: %s' % (self.chain_host,
                                                               self.chain_port,
                                                               repr(e)))
@@ -96,7 +98,7 @@ def forward_tunnel(local_port, remote_host, remote_port, transport):
 
 def verbose(s):
     if g_verbose:
-        print s
+        print(s)
 
 
 HELP = """\
@@ -163,8 +165,8 @@ def main():
     try:
         client.connect(server[0], server[1], username=options.user, key_filename=options.keyfile,
                        look_for_keys=options.look_for_keys, password=password)
-    except Exception, e:
-        print '*** Failed to connect to %s:%d: %r' % (server[0], server[1], e)
+    except Exception as e:
+        print('*** Failed to connect to %s:%d: %r' % (server[0], server[1], e))
         sys.exit(1)
 
     verbose('Now forwarding port %d to %s:%d ...' % (options.port, remote[0], remote[1]))
@@ -172,7 +174,7 @@ def main():
     try:
         forward_tunnel(options.port, remote[0], remote[1], client.get_transport())
     except KeyboardInterrupt:
-        print 'C-c: Port forwarding stopped.'
+        print('C-c: Port forwarding stopped.')
         sys.exit(0)
 
 

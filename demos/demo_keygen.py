@@ -17,9 +17,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Paramiko; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
-from __future__ import with_statement
+#from __future__ import with_statement
 
-import string
+#import string
 import sys
 
 from binascii import hexlify
@@ -47,16 +47,16 @@ key_dispatch_table = {
 def progress(arg=None):
 
     if not arg:
-        print '0%\x08\x08\x08',
+        print('0%\x08\x08\x08'),
         sys.stdout.flush()
     elif arg[0] == 'p':
-        print '25%\x08\x08\x08\x08',
+        print('25%\x08\x08\x08\x08'),
         sys.stdout.flush()
     elif arg[0] == 'h':
-        print '50%\x08\x08\x08\x08',
+        print('50%\x08\x08\x08\x08'),
         sys.stdout.flush()
     elif arg[0] == 'x':
-        print '75%\x08\x08\x08\x08',
+        print('75%\x08\x08\x08\x08'),
         sys.stdout.flush()
 
 if __name__ == '__main__':
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     for o in default_values.keys():
-        globals()[o] = getattr(options, o, default_values[string.lower(o)])
+        globals()[o] = getattr(options, o, default_values[o.lower()])
 
     if options.newphrase:
         phrase = getattr(options, 'newphrase')
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     if ktype == 'dsa' and bits > 1024:
         raise SSHException("DSA Keys must be 1024 bits")
 
-    if not key_dispatch_table.has_key(ktype):
+    if not ktype in key_dispatch_table:
         raise SSHException("Unknown %s algorithm to generate keys pair" % ktype)
 
     # generating private key
@@ -116,12 +116,12 @@ if __name__ == '__main__':
     # generating public key
     pub = key_dispatch_table[ktype](filename=filename, password=phrase)
     with open("%s.pub" % filename, 'w') as f:
-        f.write("%s %s" % (pub.get_name(), pub.get_base64()))
+        f.write("%s %s" % (pub.get_name().decode(), pub.get_base64().decode()))
         if options.comment:
             f.write(" %s" % comment)
 
     if options.verbose:
-        print "done."
+        print("done.")
 
-    hash = hexlify(pub.get_fingerprint())
-    print "Fingerprint: %d %s %s.pub (%s)" % (bits, ":".join([ hash[i:2+i] for i in range(0, len(hash), 2)]), filename, string.upper(ktype))
+    hash = hexlify(pub.get_fingerprint()).decode()
+    print("Fingerprint: %d %s %s.pub (%s)" % (bits, ":".join([ hash[i:2+i] for i in range(0, len(hash), 2)]), filename, ktype.upper()))

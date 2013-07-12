@@ -342,7 +342,9 @@ class PKey (object):
 
         @raise IOError: if there was an error writing the file.
         """
-        f = open(filename, 'w', 0o600)
+        #f = open(filename, 'w', 0600)
+        # open file in binary mode so we can skip additional conversion steps
+        f = open(filename, 'wb', 0o600)
         # grrr... the mode doesn't always take hold
         os.chmod(filename, 0o600)
         self._write_private_key(tag, f, data, password)
@@ -352,27 +354,27 @@ class PKey (object):
         f.write(('-----BEGIN %s PRIVATE KEY-----\n' % tag).encode())
         if password is not None:
             # since we only support one cipher here, use it
-            cipher_name = self._CIPHER_TABLE.keys()[0]
+            cipher_name = list(self._CIPHER_TABLE.keys())[0]
             cipher = self._CIPHER_TABLE[cipher_name]['cipher']
             keysize = self._CIPHER_TABLE[cipher_name]['keysize']
             blocksize = self._CIPHER_TABLE[cipher_name]['blocksize']
             mode = self._CIPHER_TABLE[cipher_name]['mode']
             salt = rng.read(8)
-            key = util.generate_key_bytes(MD5, salt, password, keysize)
+            key = util.generate_key_bytes(MD5, salt, password.encode(), keysize)
             if len(data) % blocksize != 0:
                 n = blocksize - len(data) % blocksize
                 #data += rng.read(n)
                 # that would make more sense ^, but it confuses openssh.
-                data += '\0' * n
+                data += b'\0' * n
             data = cipher.new(key, mode, salt).encrypt(data)
-            f.write('Proc-Type: 4,ENCRYPTED\n')
-            f.write('DEK-Info: %s,%s\n' % (cipher_name, hexlify(salt).upper()))
-            f.write('\n')
+            f.write(b'Proc-Type: 4,ENCRYPTED\n')
+            f.write(b'DEK-Info: ' + cipher_name + b',' + hexlify(salt).upper())
+            f.write(b'\n')
 
-        s = base64.encodebytes(data).decode()
+        s = base64.encodebytes(data)
         # re-wrap to 64-char lines
-        s = ''.join(s.split('\n'))
-        s = '\n'.join([s[i : i+64] for i in range(0, len(s), 64)])
-        f.write(s.encode())
-        f.write('\n'.encode())
+        s = b''.join(s.split(b'\n'))
+        s = b'\n'.join([s[i : i+64] for i in range(0, len(s), 64)])
+        f.write(s)
+        f.write(b'\n')
         f.write(('-----END %s PRIVATE KEY-----\n' % tag).encode())

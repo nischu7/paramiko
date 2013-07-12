@@ -23,6 +23,7 @@ Utility functions for dealing with primes.
 from Crypto.Util import number
 
 from paramiko import util
+from paramiko.util import pack_byte
 from paramiko.ssh_exception import SSHException
 
 
@@ -33,19 +34,21 @@ def _generate_prime(bits, rng):
         # loop catches the case where we increment n into a higher bit-range
         x = rng.read((bits+7) // 8)
         if hbyte_mask > 0:
-            x = chr(ord(x[0]) & hbyte_mask) + x[1:]
+            x = pack_byte(x[0] & hbyte_mask) + x[1:]
         n = util.inflate_long(x, 1)
         n |= 1
         n |= (1 << (bits - 1))
         while not number.isPrime(n):
             n += 2
-        if util.bit_length(n) == bits:
+        #if util.bit_length(n) == bits:
+        if n.bit_length() == bits:
             break
     return n
 
 def _roll_random(rng, n):
     "returns a random # from 0 to N-1"
-    bits = util.bit_length(n-1)
+    #bits = util.bit_length(n-1)
+    bits = (n-1).bit_length()
     bytes = (bits + 7) // 8
     hbyte_mask = pow(2, bits % 8) - 1
 
@@ -58,7 +61,7 @@ def _roll_random(rng, n):
     while True:
         x = rng.read(bytes)
         if hbyte_mask > 0:
-            x = chr(ord(x[0]) & hbyte_mask) + x[1:]
+            x = pack_byte(x[0] & hbyte_mask) + x[1:]
         num = util.inflate_long(x, 1)
         if num < n:
             break
@@ -84,7 +87,7 @@ class ModulusPack (object):
         tries = int(tries)
         size = int(size)
         generator = int(generator)
-        modulus = long(modulus, 16)
+        modulus = int(modulus, 16)
 
         # weed out primes that aren't at least:
         # type 2 (meets basic structural requirements)
@@ -99,7 +102,8 @@ class ModulusPack (object):
         # there's a bug in the ssh "moduli" file (yeah, i know: shock! dismay!
         # call cnn!) where it understates the bit lengths of these primes by 1.
         # this is okay.
-        bl = util.bit_length(modulus)
+        #bl = util.bit_length(modulus)
+        bl = modulus.bit_length()
         if (bl != size) and (bl != size + 1):
             self.discarded.append((modulus, 'incorrectly reported bit length %d' % size))
             return
@@ -112,10 +116,11 @@ class ModulusPack (object):
         @raise IOError: passed from any file operations that fail.
         """
         self.pack = {}
-        f = open(filename, 'r')
+        #f = open(filename, 'r')
+        f = open(filename, 'rb') # binary!
         for line in f:
             line = line.strip()
-            if (len(line) == 0) or (line[0] == '#'):
+            if (len(line) == 0) or (line[0] == ord('#')):
                 continue
             try:
                 self._parse_modulus(line)
@@ -124,7 +129,7 @@ class ModulusPack (object):
         f.close()
 
     def get_modulus(self, min, prefer, max):
-        bitsizes = self.pack.keys()
+        bitsizes = list(self.pack.keys())
         bitsizes.sort()
         if len(bitsizes) == 0:
             raise SSHException('no moduli available')
