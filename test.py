@@ -147,7 +147,10 @@ def main():
     # TODO: make that not a problem, jeez
     for thread in threading.enumerate():
         if thread is not threading.currentThread():
-            thread._Thread__stop()
+            try:
+                thread._Thread__stop()
+            except AttributeError:
+                thread._stop()
     # Exit correctly
     if not result.wasSuccessful():
         sys.exit(1)

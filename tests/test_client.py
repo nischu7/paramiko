@@ -206,7 +206,13 @@ class SSHClientTest (unittest.TestCase):
         del self.tc
         # hrm, sometimes p isn't cleared right away.  why is that?
         st = time.time()
-        while (time.time() - st < 5.0) and (p() is not None):
-            time.sleep(0.1)
+        #while (time.time() - st < 5.0) and (p() is not None):
+        #    time.sleep(0.1)
+
+        # instead of dumbly waiting for the GC to collect, force a collection
+        # to see whether the SSHClient object is deallocated correctly
+        import gc
+        gc.collect()
+
         self.assert_(p() is None)
 
