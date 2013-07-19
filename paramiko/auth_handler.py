@@ -390,7 +390,7 @@ class AuthHandler (object):
     def _parse_userauth_banner(self, m):
         banner = m.get_string()
         lang = m.get_string()
-        self.transport._log(INFO, 'Auth banner: ' + banner)
+        self.transport._log(INFO, 'Auth banner: %s' % banner)
         # who cares.
     
     def _parse_userauth_info_request(self, m):
