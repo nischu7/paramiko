@@ -35,7 +35,7 @@ from paramiko.message import Message
 from paramiko.pkey import PKey
 from paramiko.channel import Channel
 from paramiko.common import io_sleep
-from paramiko.util import retry_on_signal
+from paramiko.util import retry_on_signal, pack_byte
 
 SSH2_AGENTC_REQUEST_IDENTITIES, SSH2_AGENT_IDENTITIES_ANSWER, \
     SSH2_AGENTC_SIGN_REQUEST, SSH2_AGENT_SIGN_RESPONSE = range(11, 15)
@@ -68,7 +68,7 @@ class AgentSSH(object):
 
     def _connect(self, conn):
         self._conn = conn
-        ptype, result = self._send_message(chr(SSH2_AGENTC_REQUEST_IDENTITIES))
+        ptype, result = self._send_message(pack_byte(SSH2_AGENTC_REQUEST_IDENTITIES))
         if ptype != SSH2_AGENT_IDENTITIES_ANSWER:
             raise SSHException('could not get keys from ssh-agent')
         keys = []
@@ -83,11 +83,10 @@ class AgentSSH(object):
         self._keys = ()
 
     def _send_message(self, msg):
-        msg = bytes(msg)
         self._conn.send(struct.pack('>I', len(msg)) + msg)
         l = self._read_all(4)
         msg = Message(self._read_all(struct.unpack('>I', l)[0]))
-        return msg.get_byte(), msg
+        return ord(msg.get_byte()), msg
 
     def _read_all(self, wanted):
         result = self._conn.recv(wanted)
@@ -334,7 +333,7 @@ class Agent(AgentSSH):
                 # probably a dangling env var: the ssh agent is gone
                 return
         elif sys.platform == 'win32':
-            import win_pageant
+            from . import win_pageant
             if win_pageant.can_talk_to_agent():
                 conn = win_pageant.PageantConnection()
             else:
@@ -374,7 +373,7 @@ class AgentKey(PKey):
         msg.add_string(self.blob)
         msg.add_string(data)
         msg.add_int(0)
-        ptype, result = self.agent._send_message(msg)
+        ptype, result = self.agent._send_message(bytes(msg))
         if ptype != SSH2_AGENT_SIGN_RESPONSE:
             raise SSHException('key cannot be used for signing')
         return result.get_string()

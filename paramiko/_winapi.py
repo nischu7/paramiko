@@ -8,7 +8,7 @@ in jaraco.windows and asking the author to port the fixes back here.
 
 import ctypes
 import ctypes.wintypes
-import __builtin__
+import builtins
 
 ######################
 # jaraco.windows.error
@@ -53,7 +53,7 @@ def format_system_message(errno):
 	return message
 
 
-class WindowsError(__builtin__.WindowsError):
+class WindowsError(builtins.WindowsError):
 	"more info about errors at http://msdn.microsoft.com/en-us/library/ms681381(VS.85).aspx"
 
 	def __init__(self, value=None):

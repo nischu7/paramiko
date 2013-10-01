@@ -427,13 +427,14 @@ class SFTPTest (unittest.TestCase):
         """
         create a symlink and then check that lstat doesn't follow it.
         """
-        if not hasattr(os, "symlink"):
+        #if not hasattr(os, "symlink"):
+        if sys.platform == 'win32':
             # skip symlink tests on windows
             return
 
         f = sftp.open(FOLDER + '/original.txt', 'w')
         try:
-            f.write('original\n')
+            f.write(b'original\n')
             f.close()
             sftp.symlink('original.txt', FOLDER + '/link.txt')
             self.assertEqual(sftp.readlink(FOLDER + '/link.txt'), 'original.txt')
