@@ -13,7 +13,7 @@ Releases
 ========
 
 v1.11.0 (26th Jul 2013)
---------------------
+-----------------------
 
 * #152: Add tentative support for ECDSA keys. *This adds the ecdsa
   module as a dependency of Paramiko.* The module is available at

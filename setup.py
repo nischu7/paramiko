@@ -40,7 +40,7 @@ import sys
 try:
     from setuptools import setup
     kw = {
-        'install_requires': ['pycrypto >= 2.1, != 2.4',
+        'install_requires': ['pycrypto >= 2.6',
                              'ecdsa',
                              ],
     }
