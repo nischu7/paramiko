@@ -364,6 +364,9 @@ class AgentKey(PKey):
     def __str__(self):
         return self.blob
 
+    def __bytes__(self):
+        return self.blob
+
     def get_name(self):
         return self.name
 

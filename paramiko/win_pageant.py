@@ -39,7 +39,8 @@ win32con_WM_COPYDATA = 74
 
 
 def _get_pageant_window_object():
-    return ctypes.windll.user32.FindWindowA('Pageant', 'Pageant')
+    return ctypes.windll.user32.FindWindowA('Pageant'.encode('utf-8'),
+                                            'Pageant'.encode('utf-8'))
 
 
 def can_talk_to_agent():
@@ -82,7 +83,8 @@ def _query_pageant(msg):
     with pymap:
         pymap.write(msg)
         # Create an array buffer containing the mapped filename
-        char_buffer = array.array("c", map_name + '\0')
+        map_name_b = map_name.encode('utf-8') + b'\0'
+        char_buffer = array.array("B", map_name_b)
         char_buffer_address, char_buffer_size = char_buffer.buffer_info()
         # Create a string to use for the SendMessage function call
         cds = COPYDATASTRUCT(_AGENT_COPYDATA_ID, char_buffer_size,
