@@ -10,8 +10,14 @@ import ctypes
 import ctypes.wintypes
 import builtins
 
-######################
-# jaraco.windows.error
+
+# Support both python 3 and 2 at once
+# Need a common way to coerce a string to unicode
+try:
+    to_unicode = unicode
+except NameError:
+    to_unicode = str
+
 
 def format_system_message(errno):
 	"""
@@ -118,7 +124,7 @@ class MemoryMap(object):
 		FILE_MAP_WRITE = 0x2
 		filemap = ctypes.windll.kernel32.CreateFileMappingW(
 			INVALID_HANDLE_VALUE, p_SA, PAGE_READWRITE, 0, self.length,
-			unicode(self.name))
+			to_unicode(self.name))
 		handle_nonzero_success(filemap)
 		if filemap == INVALID_HANDLE_VALUE:
 			raise Exception("Failed to create file mapping")
