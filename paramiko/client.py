@@ -193,8 +193,8 @@ class SSHClient (object):
             self.load_host_keys(self.known_hosts)
 
         f = open(filename, 'w')
-        for hostname, keys in self._host_keys.iteritems():
-            for keytype, key in keys.iteritems():
+        for hostname, keys in self._host_keys.items():
+            for keytype, key in keys.items():
                 f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
         f.close()
 
